@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bearbrick report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
+<style>
+  /* Bearbrick report — єдиний дашборд аналітики: жовтень (підсумок) і листопад (по тижнях). Montserrat, білі таблиці, прості SVG-графіки. Цифри — в об'єкті D у скрипті внизу. */
+  :root { --bg:#ffffff; --fg:#1b1d21; --muted:#6b7280; --line:#e5e7eb; --soft:#f4f5f7; --ok:#1f7a4d; --warn:#b7791f; --bad:#c0392b; --bar:#1b1d21; --bar2:#9ca3af; --r:8px; color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); }
+  body { font-family: 'Montserrat','Helvetica Neue',Arial,sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
+  .pg { max-width: 76rem; margin: 0 auto; padding: 28px 16px 64px; display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  h1 { font-size: 28px; font-weight: 700; margin: 0; line-height: 1.2; letter-spacing: -0.01em; text-wrap: balance; }
+  .period { align-self: flex-start; font-size: 12.5px; color: var(--muted); border: 1px solid var(--line); border-radius: var(--r); padding: 2px 8px; }
+  .lead { margin: 4px 0 0; font-size: 15px; line-height: 1.6; max-width: 64rem; }
+  .lead b { font-weight: 600; }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .toc a { font-size: 12.5px; color: var(--fg); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+  .toc a:hover { border-color: var(--ok); }
+  section { scroll-margin-top: 12px; }
+  h2 { font-size: 20px; font-weight: 700; margin: 30px 0 4px; text-wrap: balance; }
+  h3 { font-size: 15px; font-weight: 700; margin: 14px 0 6px; }
+  .sub { font-size: 14px; line-height: 1.55; margin: 0 0 10px; max-width: 64rem; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; line-height: 1.5; max-width: 64rem; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: 8px; }
+  .kpi { border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .kpi .l { font-size: 12px; color: var(--muted); }
+  .kpi .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .kpi .d { font-size: 12px; line-height: 1.4; }
+  .up { color: var(--ok); } .down { color: var(--bad); } .mid { color: var(--warn); }
+  .finds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 8px; }
+  .find { border-left: 4px solid var(--line); background: var(--soft); border-radius: 0 var(--r) var(--r) 0; padding: 10px 12px; font-size: 13.5px; line-height: 1.5; }
+  .find b { font-weight: 600; }
+  .find.ok { border-left-color: var(--ok); } .find.bad { border-left-color: var(--bad); } .find.warn { border-left-color: var(--warn); }
+  .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: #fff; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; background: #fff; }
+  th, td { text-align: left; vertical-align: top; font-size: 13px; line-height: 1.45; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; font-weight: 600; color: var(--muted); background: #fff; }
+  tr:last-child td { border-bottom: 0; }
+  td.n, th.n { text-align: right; white-space: nowrap; }
+  td.b { font-weight: 600; }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 600; border-radius: 10px; padding: 1px 8px; line-height: 1.4; }
+  .tag.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .tag.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+  .tag.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+  .tag.mute { color: var(--muted); background: var(--soft); }
+  .chart { border: 1px solid var(--line); border-radius: var(--r); padding: 12px; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart text { font-family: inherit; font-size: 11px; fill: var(--muted); }
+  .chart text.v { fill: var(--fg); font-weight: 600; }
+  .chart text.lv { paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); gap: 10px; }
+  .conc { margin: 10px 0 0; font-size: 13.5px; line-height: 1.55; padding: 8px 12px; border-left: 4px solid var(--ok); background: color-mix(in srgb, var(--ok) 7%, #fff); border-radius: 0 var(--r) var(--r) 0; max-width: 70rem; }
+  .conc b { font-weight: 600; }
+  .foot { margin-top: 22px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+  a { color: var(--ok); }
+  .months { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 8px; margin-top: 8px; }
+  .months a { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: var(--fg); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; font-size: 17px; font-weight: 700; }
+  .months a span { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .months a:hover { border-color: var(--fg); }
+  .part { margin-top: 34px; padding-top: 18px; border-top: 2px solid var(--fg); display: flex; flex-direction: column; gap: 8px; scroll-margin-top: 12px; }
+  h2.ph { font-size: 25px; margin: 0; line-height: 1.2; }
+  .wks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 8px; }
+  .wk { border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.5; }
+  .wk .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .wk .hd b { font-size: 15px; }
+  .wk .nums { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .wk p { margin: 0; } .wk p span { color: var(--muted); }
+  .top { font-size: 12.5px; }
+  #tip { position: fixed; pointer-events: none; background: #1b1d21; color: #fff; font-size: 12px; padding: 5px 8px; border-radius: 6px; opacity: 0; transition: opacity .1s; z-index: 10; max-width: 18rem; }
+</style></head>
+<body>
+<main class="pg">
+<span class="eyebrow">Bearbrick Audio · CORE · аналітика проєкту</span>
+<h1>Bearbrick report</h1>
+<span class="period">Жовтень 2026 — підсумок місяця · Листопад 2026 — по тижнях · оновлено 15 листопада</span>
+<p class="lead">Єдиний дашборд аналітики проєкту. Спочатку — розбір жовтня: звірка звіту p3 з Shopify, GA4 і маржею ринків. Далі — листопад по тижнях: щопонеділка додаємо минулий тиждень і порівнюємо його з жовтнем і цілями.</p>
+<nav class="months"><a href="#oct">Жовтень 2026<span>підсумок місяця</span></a><a href="#nov">Листопад 2026<span>по тижнях</span></a></nav>
+
+<div class="part" id="oct">
+<span class="eyebrow">Частина 1 · жовтень</span>
+<h2 class="ph">Жовтень 2026: найбільше замовлень, але прибуток тонкий</h2>
+<span class="period">1–31 жовтня 2026 · Meta Ads, Shopify, GA4, Zuko, таблиця маржі CORE · звіт p3 від 1 листопада</span>
+<p class="lead">Дашборд звіряє місячний звіт агенції p3 з нашими даними і рахує результат по-своєму: <b>за фактичними замовленнями Shopify і маржею кожного ринку</b>, а не за середньою беззбитковістю. Нижче — що сталося за місяць, де реклама заробляє і де втрачає, що з цим робити в листопаді та грудні.</p>
+<nav class="toc">
+  <a href="#summary">Головне</a><a href="#trend">5 місяців</a><a href="#weeks">Тижні</a><a href="#trust">Чи можна вірити цифрам</a><a href="#campaigns">Кампанії</a><a href="#markets">Ринки</a><a href="#creative">Креативи</a><a href="#placements">Плейсменти</a><a href="#site">Сайт</a><a href="#channels">Інші канали</a><a href="#actions">Що робимо</a><a href="#questions">Питання</a>
+</nav>
+</div>
+
+<section id="summary">
+<h2>Головне за жовтень</h2>
+<div class="kpis" id="kpis"></div>
+<h3>П'ять висновків</h3>
+<div class="finds">
+  <div class="find ok"><b>Рекорд за замовленнями — і в плюсі.</b> 79 замовлень CORE (+46% до вересня). За маржею кожного ринку це ≈ <span data-k="profit"></span> після реклами — тонко, але в плюсі.</div>
+  <div class="find warn"><b>$196 — це «змішана» ціна продажу.</b> Вона ділить витрати Meta на всі замовлення магазину, разом з пошуком і прямими заходами. Власна ціна продажу Meta — від $228 (за Meta) до $317 (за останнім кліком).</div>
+  <div class="find bad"><b>США за старої ціни $599 були в мінусі.</b> Маржа $155 на замовлення при ціні продажу Meta ~$207. Підвищення до $699 (26.10) дає маржу $222 — ледь вище за ціну продажу.</div>
+  <div class="find warn"><b>Один креатив тримає акаунт.</b> Art icon hook1 — 45% витрат і 47% продажів Meta. Замінника немає, а білі колонки закінчуються 12–13.11.</div>
+  <div class="find bad"><b>Власні канали не працюють.</b> Жодної розсилки третій місяць (32,298 контактів), 1 пост в Instagram, Google Ads ще не запущено. Пошук без реклами сам приніс 10 продажів.</div>
+</div>
+</section>
+
+<section id="trend">
+<h2>П'ять місяців: замовлень більше, ціна продажу тримається біля межі</h2>
+<p class="sub">Стовпчики — замовлення CORE за Shopify, точки — ціна продажу (витрати Meta ÷ замовлення). Пунктир — беззбитковість p3 $209.</p>
+<div class="chart"><div class="legend"><span><i style="background:var(--bar)"></i>Замовлення</span><span><i style="background:var(--warn)"></i>Ціна продажу, $</span><span><i style="background:var(--bad)"></i>Беззбитковість $209</span></div><div id="ch-trend"></div></div>
+<div class="wrap" style="margin-top:10px"><table id="t-trend"></table></div>
+<p class="conc"><b>Висновок.</b> Об'єм росте разом з бюджетом: витрати +85%, замовлення +46%. Кожне наступне замовлення дорожче — для листопада це означає: більше бюджету без нових креативів і чорних колонок не дасть пропорційно більше продажів.</p>
+</section>
+
+<section id="weeks">
+<h2>Тижні жовтня: провал 5–11 жовтня і найкращий тиждень 19–25</h2>
+<p class="sub">Ціна продажу по відрізках місяця. 7–8 жовтня — недійсні кліки в Instagram Stories: 14,285 кліків за $429, 2 кошики, 0 продажів; запит на повернення грошей у Meta ще розглядають.</p>
+<div class="chart"><div class="legend"><span><i style="background:var(--bar)"></i>Ціна продажу, $</span><span><i style="background:var(--bad)"></i>Беззбитковість $209</span></div><div id="ch-weeks"></div></div>
+<div class="wrap" style="margin-top:10px"><table id="t-weeks"></table></div>
+<p class="conc"><b>Висновок.</b> Перебудова 17 і 21 жовтня спрацювала: $217 за продаж у 1–16.10 проти $178 у 17–31.10. Але останні дні місяця вже знову дорожчали ($214), і це перейшло в листопад.</p>
+</section>
+
+<section id="trust">
+<h2>Чи можна вірити цифрам: три джерела — три відповіді</h2>
+<p class="sub">Shopify і GA4 збігаються за кількістю замовлень. Meta бачить менше замовлень, ніж магазин, але більше, ніж їй дає останній клік — тобто частина «її» продажів прийшла з пошуку, прямих заходів чи органіки.</p>
+<div class="two">
+  <div class="wrap"><table id="t-recon"></table></div>
+  <div class="wrap"><table id="t-cpa3"></table></div>
+</div>
+<h3>Звідки покупки в GA4: стандартні канали проти каналів p3</h3>
+<div class="wrap"><table id="t-ga"></table></div>
+<p class="conc"><b>Висновок.</b> У стандартних звітах GA4 41 з 79 покупок — «Unassigned», бо мітки p3 у рекламі Meta GA4 не розпізнає. p3 обійшли це власною групою каналів, але кожен, хто відкриє звичайний звіт, побачить неправильну картину. Поки мітки не виправлені, рахуємо результат за Shopify, а ціну продажу Meta — у діапазоні $228–317, а не $196.</p>
+</section>
+
+<section id="campaigns">
+<h2>Кампанії Meta: ретаргет і Північна Америка тримають місяць</h2>
+<p class="sub">Ціна продажу — за атрибуцією Meta (Meta-продажі). Колір — порівняння з маржею ринку кампанії.</p>
+<div class="chart"><div class="legend"><span><i style="background:var(--ok)"></i>Нижче маржі ринку</span><span><i style="background:var(--warn)"></i>Біля межі</span><span><i style="background:var(--bad)"></i>Вище маржі — збиток</span></div><div id="ch-camp"></div></div>
+<div class="wrap" style="margin-top:10px"><table id="t-camp"></table></div>
+<p class="conc"><b>Висновок медіабайєра.</b> Найдешевший продаж — ретаргет ($126), але його результат частково дублює холодні кампанії. Оригінальна кампанія Північної Америки ($195) вигідна лише за нової ціни $699. Тести і Європа з'їли $2,661 за 5 продажів — правильно, що Європу вимкнули; тестам потрібні жорсткі правила зупинки.</p>
+</section>
+
+<section id="markets">
+<h2>Ринки: маржа різна — і межа ціни продажу теж</h2>
+<p class="sub">Маржа до реклами — скільки можна заплатити за продаж і не піти в мінус. Рахуємо з таблиці CORE Margins &amp; Pricing і собівартістю $125, як у Shopify. Meta і Shopify розходяться в країнах на третину–половину замовлень, тому в таблиці — обидві цифри.</p>
+<div class="wrap"><table id="t-mkt"></table></div>
+<p class="conc"><b>Висновок медіабайєра.</b> Тайвань, Філіппіни і Європа — збиткові, вимкнення правильне. Гонконг — у плюсі з запасом. <b>Малайзія — найдешевший продаж місяця ($121 за Meta, 7 замовлень у Shopify)</b>, хоча p3 зняли її з холодної реклами через «низькоякісні покази». Варто повернути невеликий тест лише на Instagram, перш ніж відмовлятися від ринку.</p>
+</section>
+
+<section id="creative">
+<h2>Креативи: один ролик і кілька кандидатів на заміну</h2>
+<p class="sub">Оголошення з витратами від $50. Кошики на 1,000 показів: ≥0.42 — працює, 0.26–0.42 — нейтрально, нижче — не працює (шкала p3).</p>
+<div class="wrap"><table id="t-cr"></table></div>
+<p class="conc"><b>Висновок медіабайєра.</b> Hook1 продає дешевше середнього, але його частка падає (57% продажів у вересні → 47% у жовтні). Найдешевші продажі — у Art icon hook2 ($132) і Warranty 14 ($158): їм варто дати більше бюджету в Азії. Відео авторів — лише для США і Канади, в Азії вони не продають. Чорних креативів майже немає, а з 12–13.11 продаємо лише чорні колонки.</p>
+</section>
+
+<section id="placements">
+<h2>Плейсменти: Instagram продає, Facebook Reels — ні</h2>
+<div class="chart"><div class="legend"><span><i style="background:var(--bar)"></i>Ціна продажу, $ (за Meta)</span></div><div id="ch-pl"></div></div>
+<div class="wrap" style="margin-top:10px"><table id="t-pl"></table></div>
+<p class="conc"><b>Висновок.</b> 68% витрат в Instagram дали 48 з 68 продажів Meta. Facebook Reels — $341 за продаж, у 1.8 раза дорожче за Instagram Stories. Його варто вимкнути в ретаргеті і холодних кампаніях, де він не дає кошиків.</p>
+</section>
+
+<section id="site">
+<h2>Сайт: до оплати доходить більше людей</h2>
+<p class="sub">Воронка GA4 за користувачами, весь сайт. Відвідування не порівнюємо: 8 жовтня — сплеск недійсних кліків.</p>
+<div class="wrap"><table id="t-funnel"></table></div>
+<p class="conc"><b>Висновок.</b> Від оформлення до покупки доходить 35% проти 28% у вересні, а от від кошика до оформлення — менше (36% проти 40%). 69 з 79 покупок — з телефона. Zuko для цього не годиться: він не бачить оплат через Shop Pay і PayPal (у 11.10–8.11 пропустив 42 з 80 замовлень), тому воронку дивимось у GA4 і Shopify.</p>
+</section>
+
+<section id="channels">
+<h2>Інші канали: безкоштовні продажі є, а роботи з ними немає</h2>
+<div class="wrap"><table id="t-ch"></table></div>
+<p class="conc"><b>Висновок.</b> Пошук, прямі заходи і органіка Instagram разом дали 23 покупки без рекламних витрат. Розсилки — найдешевший невикористаний ресурс: 32 тисячі контактів і жодного листа. Це головний аргумент за ланцюжок листів дропу і роботу з retention з грудня.</p>
+</section>
+
+
+<section id="actions">
+<h2>Що робимо в листопаді–грудні</h2>
+<p class="sub">Рекомендації аналітика і медіабайєра. Кожна спирається на цифру з дашборду.</p>
+<div class="wrap"><table id="t-act"></table></div>
+</section>
+
+<section id="questions">
+<h2>Відкриті питання</h2>
+<div class="wrap"><table id="t-q"></table></div>
+</section>
+
+<div class="part" id="nov">
+<span class="eyebrow">Частина 2 · листопад</span>
+<h2 class="ph">Листопад 2026 по тижнях</h2>
+<span class="period">тиждень — з понеділка по неділю; неділя 1.11 входить у перший тиждень · Meta Ads, Google Ads, Shopify, GA4</span>
+<p class="lead">Кожен тиждень порівнюємо з жовтнем і з межами ціни продажу: <b>беззбитковість p3 $209</b>, <b>ціль p3 на листопад $250</b>, маржа <b>США $222</b> і <b>Канади $199</b>. Тиждень без цифр — дані ще не внесені.</p>
+<nav class="toc"><a href="#nov-sum">Місяць на сьогодні</a><a href="#nov-weeks">Тижні в цифрах</a><a href="#nov-notes">Що сталося за тиждень</a><a href="#nov-start">Старт місяця (p3)</a><a href="#oct">До жовтня</a></nav>
+</div>
+
+<section id="nov-sum">
+<h2>Листопад на сьогодні</h2>
+<div class="kpis" id="kpis-novm"></div>
+<p class="note" id="nov-filled"></p>
+</section>
+
+<section id="nov-weeks">
+<h2>Ціна продажу: жовтень і листопад по тижнях</h2>
+<p class="sub">Ціна продажу = витрати Meta і Google ÷ замовлення CORE у Shopify. Чорні — нижче беззбитковості $209, жовті — від $209 до цілі $250, червоні — вище $250.</p>
+<div class="chart"><div class="legend"><span><i style="background:var(--bar)"></i>До $209</span><span><i style="background:var(--warn)"></i>$209–250</span><span><i style="background:var(--bad)"></i>Понад $250</span><span><i style="background:var(--bar2)"></i>Жовтень</span></div><div id="ch-novw"></div></div>
+<div class="wrap" style="margin-top:10px"><table id="t-novw"></table></div>
+</section>
+
+<section id="nov-notes">
+<h2>Що сталося за тиждень</h2>
+<p class="sub">Події тижня, що змінили в рекламі, і висновок. Заповнюємо разом з цифрами щопонеділка.</p>
+<div class="wks" id="novcards"></div>
+</section>
+
+<section id="nov-start">
+<h2>Старт місяця за звітом p3: продажів більше, але кожен дорожчий</h2>
+<p class="sub">Знімок p3 за 1–9 листопада і переглянуті цілі на листопад і грудень. Тижневі цифри вище замінять цю оцінку, щойно внесемо дані.</p>
+<div class="kpis" id="kpis-nov"></div>
+<div class="wrap" style="margin-top:10px"><table id="t-target"></table></div>
+<p class="conc"><b>Висновок медіабайєра.</b> 1–9 листопада ціна продажу $272 — вище за маржу і в США ($222), і в Канаді ($199). Ціль p3 на листопад ($250) теж вища за ці межі: план закладає роботу Північної Америки в мінус. Пропоную знизити бюджет до $600 на день уже при $250 за 7 днів, а не при $300, і рахувати межу окремо по ринках.</p>
+</section>
+
+
+<section id="method" class="part">
+<h2 class="ph">Методика і джерела</h2>
+<ul class="note" style="padding-left:1.1rem">
+  <li><b>Звіт p3</b> «CORE October 2026» від 1.11.2026: витрати Meta (Graph API), замовлення Shopify, GA4 (власна група каналів p3), кампанії, ринки, креативи, плейсменти, воронка, план і цілі. Чисті продажі $46.7k — оцінка p3, остаточна цифра Shopify ще буде.</li>
+  <li><b>Наш GA4</b>: звіт Traffic acquisition, стандартна група каналів, 1–31.10, подія purchase — 79 покупок, $53,406.</li>
+  <li><b>Zuko, GA4, Shopify</b>: звірка за 11.10–8.11 (дашборд аудиту) — Zuko не бачить оплат через Shop Pay і PayPal.</li>
+  <li><b>Маржа до реклами</b> = ціна − собівартість $125 − роялті $25 − доставка до клієнта − склад $2.18 − комісія Shopify 3.86% − мито й податки (США 29%, Європа 24%, Канада 15%, Тайвань 15%, Малайзія 12%, Сінгапур 10%, Гонконг 0%). Таблиця CORE Margins &amp; Pricing, курси на 20.01.2026, ціни з сайту. З собівартістю $94 (як у таблиці) маржа на $31 вища.</li>
+  <li><b>Прибуток після реклами</b> — оцінка: замовлення Shopify по країнах (знімок p3 від 1.11, приблизний) × маржа ринку − витрати Meta. США: 22 замовлення за $599 і 4 за $699 (ціна змінилась 26.10) — припущення. Країни з одним замовленням і 4 замовлення без країни — за середньою маржею $280. Не враховано фіксованих витрат, оплати агенції, повернень і другої колонки в замовленнях (88 колонок у 79 замовленнях), тому оцінка приблизна.</li>
+  <li><b>Листопад по тижнях</b>: витрати — Meta Ads Manager і Google Ads за тиждень (пн–нд); замовлення і чисті продажі CORE — Shopify; оформлення → покупка — GA4. Внести тиждень — заповнити рядок у <code>D.novWeeks</code>.</li>
+  <li><b>Ціна продажу</b>: змішана = витрати Meta ÷ усі замовлення Shopify; за Meta = витрати ÷ продажі за атрибуцією Meta; за останнім кліком = витрати ÷ покупки з платних соцмереж у GA4 (група каналів p3).</li>
+</ul>
+<p class="foot">Цифри можна правити в об'єкті <code>D</code> на початку скрипта внизу файлу.</p>
+</section>
+</main>
+<div id="tip"></div>
+
+<script>
+// ===== ДАНІ (правити тут) =====
+const D = {
+  kpi: { orders: 79, ordersPrev: 54, speakers: 88, spend: 15510, spendPrev: 8399, netSales: 46700, cpaBlend: 196, cpaPrev: 156, breakeven: 209, roas: 3.0, roasPrev: 3.89, c2p: 35.2, c2pPrev: 27.6 },
+  trend: [ // місяць, витрати Meta, чисті продажі, замовлення
+    ['Червень', 8396, 20695, 34], ['Липень', 11822, 36304, 56], ['Серпень', 6241, 14117, 25], ['Вересень', 8399, 32670, 54], ['Жовтень', 15510, 46700, 79] ],
+  weeks: [ ['1–4 жовт', 1781, 10], ['5–11 жовт', 2940, 11], ['12–18 жовт', 3107, 17], ['19–25 жовт', 4040, 25], ['26–31 жовт', 3641, 17] ],
+  recon: [ ['Shopify, усі товари', 80, '$54,100', 'з податками і митом'], ['Shopify, чисті продажі CORE', 79, '≈$46,700', 'основа розрахунків'], ['GA4', 79, '$53,408', 'з податками і митом'], ['Meta (атрибуція реклами)', 68, '$46,614', 'лише свої продажі'] ],
+  gaDefault: { 'Unassigned': [10860, 41], 'Mobile Push Notifications': [6452, 10], 'Organic Search': [1145, 10], 'Direct': [1441, 8], 'Organic Social': [639, 5], 'Paid Social': [15241, 4], 'Referral': [78, 1] },
+  gaCustom: { 'Paid social': [32552, 49], 'Organic search': [1145, 10], 'Direct': [1441, 8], 'Unattributed': [675, 6], 'Organic social': [639, 5], 'Referral': [78, 1] },
+  // кампанія, витрати, кошики, ціна кошика, кошики/1000, продажі Meta, ROAS Meta, маржа ринку (межа), коментар
+  camps: [
+    ['Ретаргет', 1506, 105, 14, 0.21, 12, 5.92, 250, 'Найдешевший кошик; результат частково дублює холодні'],
+    ['North America, оригінальна', 4484, 157, 29, 1.17, 23, 3.30, 222, 'Найкраща холодна; вигідна лише за $699'],
+    ['Asia-Pacific (вимкнена 17.10)', 1783, 101, 18, 0.17, 9, 3.19, 300, 'Продавала дешево — завдяки Малайзії'],
+    ['US + Canada, нова структура', 2147, 50, 43, 0.93, 9, 3.67, 222, 'Дорожчий кошик, тримає відео авторів'],
+    ['Hong Kong + Taiwan, нова', 2929, 113, 26, 0.18, 10, 2.04, 315, 'Гонконг у плюсі, Тайвань тягне вниз'],
+    ['Тести', 1481, 68, 22, 0.33, 4, 1.79, 250, 'Без правил зупинки'],
+    ['Європа (вимкнена 27.10)', 1180, 23, 51, 0.23, 1, 0.57, 282, '1 продаж за місяць'] ],
+  // ринок, витрати Meta, продажі Meta, замовлення Shopify, маржа (межа ціни продажу), рішення
+  mkts: [
+    ['США', null, null, 26, '$155 за $599 · $222 за $699', 'Лише за $699; межа $222'],
+    ['Канада', null, null, 5, '$199 (ціна $550)', 'Найвища конверсія, низька межа'],
+    ['США + Канада разом', 6631, 32, 31, null, 'Ціна продажу $207'],
+    ['Гонконг', 3040, 11, 14, '$331', 'У плюсі — масштабувати обережно'],
+    ['Тайвань', 2215, 6, 7, '$296', 'Збиток — вимкнути'],
+    ['Малайзія', 965, 8, 7, '$290', 'Найдешевший продаж — повернути тест'],
+    ['Філіппіни', 430, 1, null, '—', 'Збиток — лише ретаргет, прибрати'],
+    ['Європа', 1180, 1, 2, '$282', 'Збиток — вимкнена 27.10'] ],
+  // креатив, ринок, витрати, продажі Meta, кошики/1000, hook, hold, вердикт
+  cr: [
+    ['Art icon hook1', 'усі', 6983, 32, 0.60, '17.4%', '25.7%', ['warn','Головний, але втомлюється']],
+    ['Creator video, Yuta', 'США + Канада', 1698, 7, 0.28, '18.7%', '15.3%', ['ok','Працює в США, не в Азії']],
+    ['Creator video, Jeff', 'США + Канада', 1126, 3, 0.14, '24.0%', '20.2%', ['warn','Дорогий продаж']],
+    ['Warranty 14', 'Азія', 945, 6, 0.29, '25.1%', '15.1%', ['ok','Дешевий продаж — більше бюджету в Азії']],
+    ['Art icon hook2', 'Гонконг + Тайвань', 528, 4, 0.50, '19.7%', '22.2%', ['ok','Найдешевший продаж — масштабувати']],
+    ['Art icon, creator cut', 'Гонконг + Тайвань', 317, 1, 0.28, '30.4%', '27.8%', ['mute','Нейтрально']],
+    ['Lifestyle still 2', 'Гонконг + Тайвань', 227, 0, 0.31, '—', '—', ['bad','Без продажів']],
+    ['AI Lifestyle 3, black', 'США + Канада', 176, 1, 0.15, '—', '—', ['mute','Мало даних']] ],
+  pl: [ ['Instagram Stories', 3764, 20], ['Instagram Reels', 2754, 14], ['Facebook feed', 2895, 14], ['Instagram feed', 3991, 14], ['Facebook Reels', 1706, 5] ],
+  funnel: [ ['Додали в кошик', 491, 607], ['Почали оформлення', 196, 219], ['Купили', 54, 77] ],
+  channels: [
+    ['Пошук без реклами', '1,145 сесій', '10 покупок', ['ok','Безкоштовні продажі — захистити рекламою на бренд']],
+    ['Прямі заходи', '1,441 сесія', '8 покупок', ['mute','Ті, хто знає бренд']],
+    ['Instagram без реклами', '639 сесій · 1 пост за місяць · підписників 128,175 (−842)', '5 покупок', ['warn','Немає регулярного контенту']],
+    ['Розсилки (Mailchimp)', '32,298 контактів', '0 листів 3-й місяць', ['bad','Найбільший невикористаний ресурс']],
+    ['Google Ads', 'не запущено', '—', ['warn','Старт ≈20.11 разом з чорними колонками']],
+    ['Сайти-огляди (referral)', '78 сесій', '1 покупка', ['mute','—']] ],
+  // ЛИСТОПАД ПО ТИЖНЯХ — щопонеділка заповнюємо минулий тиждень.
+  // meta, google — витрати, $; orders — замовлення CORE (Shopify); sales — чисті продажі, $; c2p — оформлення → покупка, % (GA4).
+  // Поки цифр немає — null. events — події тижня, changes — що змінили в рекламі, result — висновок.
+  novWeeks: [
+    { label: '1–8 лист', meta: null, google: 0, orders: null, sales: null, c2p: null,
+      events: 'Ціна в США $699 з 26.10. 5.11 p3 перебудували структуру кампаній.',
+      changes: '',
+      result: 'За звітом p3 за 1–9.11: $5,985 витрат, 22 замовлення, $272 за продаж; 5–8.11 — $371. Точні цифри тижня — внести.' },
+    { label: '9–15 лист', meta: null, google: 0, orders: null, sales: null, c2p: null,
+      events: '12–13.11 закінчуються білі колонки (17 шт.).',
+      changes: '', result: '' },
+    { label: '16–22 лист', meta: null, google: null, orders: null, sales: null, c2p: null,
+      events: '≈17.11 чорні колонки в продажу; 18.11 затвердження листів дропу; ≈20.11 старт Google Ads.',
+      changes: '', result: '' },
+    { label: '23–29 лист', meta: null, google: null, orders: null, sales: null, c2p: null,
+      events: '24.11 листи дропу The Weeknd; 27.11 Black Friday.',
+      changes: '', result: '' },
+    { label: '30 лист', meta: null, google: null, orders: null, sales: null, c2p: null,
+      events: '30.11 Cyber Monday.',
+      changes: '', result: '' } ],
+  novTarget: { orders: [80, 95], cpa: 250, meta: 22000, google: 650 },
+  nov: { spend: 5985, orders: 22, cpa: 272, cpa58: 371, white: 17 },
+  target: [ ['Замовлення CORE', '79', '80–95', '70–85'], ['Ціна продажу', '$196', '≤ $250', '≤ $230'], ['Витрати Meta', '$15.5k', '$22k', '$18k'], ['Google Ads', '—', '$650 (тест)', '$1,850'] ],
+  act: [
+    ['Рахувати межу ціни продажу окремо по ринках: США $222, Канада $199, Гонконг $331, а не середні $209', 'Ціль $250 на листопад вища за межу США і Канади', 'Влад + Настя', 'з 16.11'],
+    ['Знижувати бюджет до $600 на день, якщо ціна продажу > $250 за 7 днів (зараз поріг p3 — $300)', '1–9.11 вже $272, 5–8.11 — $371', 'Влад', '16.11'],
+    ['Повернути невеликий тест на Малайзію лише в Instagram', 'Найдешевший продаж місяця: $121, 7 замовлень у Shopify', 'Влад', 'після 17.11'],
+    ['Вимкнути Facebook Reels у ретаргеті і холодних кампаніях', '$341 за продаж проти $188 в Instagram Stories', 'Влад', '16.11'],
+    ['Дати бюджет Art icon hook2 і Warranty 14 в Азії; авторські відео — лише США і Канада', '$132 і $158 за продаж; автори в Азії — 0.10–0.19 кошика на 1,000', 'Влад + креативна стратегія', '16–27.11'],
+    ['Чорні креативи до 17.11 — з 12–13.11 продаємо лише чорні колонки', '17 білих залишилось; чорні тести — лише $215', 'Марія + креативна стратегія', '17.11'],
+    ['Виправити мітки Meta, щоб стандартний GA4 показував рекламу правильно', '41 з 79 покупок — Unassigned у стандартних звітах', 'Влад', '20.11'],
+    ['Запустити розсилки: листи дропу і «Подарунок на Різдво»; далі retention з Netpeak', '32,298 контактів, 0 листів 3 місяці', 'Марія + Настя', '24.11, 8–15.12'],
+    ['Google Ads на бренд — захистити 10 безкоштовних продажів з пошуку', 'Пошук без реклами: 10 покупок щомісяця', 'Влад', '≈20.11'],
+    ['Ретаргет: обмежити частоту і країнами з продажами', 'Кошик $14, але результат дублює холодні; бюджет пішов у Facebook Reels', 'Влад', '16.11'] ],
+  q: [
+    ['Скільки чорних колонок і точна дата приходу 160 шт.', 'Юля'], ['Собівартість: $125 (Shopify) чи $94 (таблиця) — від цього прибуток ±$2.4k за місяць', 'Марія'],
+    ['Повернення $429 за недійсні кліки 7–8 жовтня — статус запиту в Meta', 'Влад'], ['10 невиконаних замовлень CORE, найстаріше з 25 червня', 'Марія + Юля'],
+    ['Домен bearbrick.audio закінчується 2 грудня — підтвердити автопродовження', 'Марія'], ['Остаточні чисті продажі жовтня з Shopify (зараз оцінка $46.7k)', 'Марія'],
+    ['Хто і коли відправляє листи Black Friday і The Weeknd', 'Марія'] ]
+};
+// маржа ринків для оцінки прибутку: замовлення × маржа
+D.profitMix = [ ['США', 26, (22*155+4*222)/26], ['Гонконг', 14, 331], ['Тайвань', 7, 296], ['Малайзія', 7, 290], ['Канада', 5, 199], ['Південна Корея', 3, 312], ['Німеччина', 2, 282], ['Сінгапур', 2, 344], ['Австралія', 2, 317], ['Інші країни', 7, 280] ];
+
+// ===== РОЗРАХУНКИ І ВІДМАЛЬОВКА =====
+const $ = (s) => document.querySelector(s);
+const money = (v) => (v < 0 ? '−$' : '$') + Math.round(Math.abs(v)).toLocaleString('en-US');
+const int = (v) => Math.round(v).toLocaleString('en-US');
+const pct = (a, b) => ((a / b - 1) * 100);
+const sgn = (v, d = 0) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const tip = $('#tip');
+function hover(node, text) { node.addEventListener('pointermove', (e) => { tip.textContent = text; tip.style.opacity = 1; const x = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 12) + 'px'; }); node.addEventListener('pointerleave', () => tip.style.opacity = 0); }
+function table(id, head, rows, numCols = []) {
+  const t = $(id); t.innerHTML = '';
+  const tr = el('tr'); head.forEach((h, i) => tr.appendChild(el('th', numCols.includes(i) ? 'n' : '', h))); const th = el('thead'); th.appendChild(tr); t.appendChild(th);
+  const tb = el('tbody');
+  rows.forEach((r) => { const row = el('tr'); r.forEach((c, i) => { const td = el('td', numCols.includes(i) ? 'n' : (i === 0 ? 'b' : '')); if (Array.isArray(c)) { td.appendChild(el('span', 'tag ' + c[0], c[1])); } else td.textContent = c == null ? '—' : c; row.appendChild(td); }); tb.appendChild(row); });
+  t.appendChild(tb);
+}
+const ns = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+// KPI
+const K = D.kpi;
+const marginTotal = D.profitMix.reduce((s, r) => s + r[1] * r[2], 0), mixN = D.profitMix.reduce((s, r) => s + r[1], 0);
+const avgMargin = marginTotal / mixN, profit = avgMargin * K.orders - K.spend, profit94 = profit + 31 * K.orders;
+document.querySelectorAll('[data-k="profit"]').forEach((e) => e.textContent = '+$' + (profit / 1000).toFixed(1) + '–' + (profit94 / 1000).toFixed(1) + 'k');
+const kpis = [
+  ['Замовлення CORE', int(K.orders), sgn(pct(K.orders, K.ordersPrev)) + '% до вересня · ' + K.speakers + ' колонок', 'up'],
+  ['Витрати Meta', money(K.spend), sgn(pct(K.spend, K.spendPrev)) + '% до вересня', 'mid'],
+  ['Ціна продажу (змішана)', money(K.cpaBlend), 'вересень ' + money(K.cpaPrev) + ' · межа p3 ' + money(K.breakeven), 'mid'],
+  ['Повернення на витрати', K.roas.toFixed(1) + '×', 'чисті продажі ≈ ' + money(K.netSales) + ' · вересень ' + K.roasPrev + '×', 'mid'],
+  ['Прибуток після реклами', '≈ ' + money(profit), 'оцінка за маржею ринків; з собівартістю $94 — ' + money(profit94), 'up'],
+  ['Оформлення → покупка', K.c2p.toFixed(1) + '%', sgn(K.c2p - K.c2pPrev, 1) + ' п.п. до вересня (GA4)', 'up'] ];
+kpis.forEach(([l, v, d, c]) => { const k = el('div', 'kpi'); k.appendChild(el('span', 'l', l)); k.appendChild(el('span', 'v', v)); k.appendChild(el('span', 'd ' + c, d)); $('#kpis').appendChild(k); });
+
+// 5 місяців: графік і таблиця
+function comboChart(target, rows, opts) {
+  const W = 760, H = 240, P = { l: 36, r: 40, t: 22, b: 28 }, n = rows.length, bw = (W - P.l - P.r) / n;
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opts.label });
+  const maxB = Math.max(...rows.map((r) => r.bar)) * 1.15, maxL = Math.max(opts.ref || 0, ...rows.map((r) => r.line)) * 1.15;
+  const yB = (v) => H - P.b - (v / maxB) * (H - P.t - P.b), yL = (v) => H - P.b - (v / maxL) * (H - P.t - P.b);
+  svg.appendChild(svgEl('line', { x1: P.l, x2: W - P.r, y1: H - P.b, y2: H - P.b, stroke: '#e5e7eb' }));
+  rows.forEach((r, i) => { const x = P.l + i * bw + bw * 0.22, w = bw * 0.56; const rect = svgEl('rect', { x, y: yB(r.bar), width: w, height: H - P.b - yB(r.bar), fill: 'var(--bar)', rx: 3 }); hover(rect, r.tip); svg.appendChild(rect);
+    const tv = svgEl('text', { x: x + w / 2, y: H - P.b - 8, 'text-anchor': 'middle', class: 'v' }); tv.style.fill = '#fff'; tv.textContent = opts.fmtBar(r.bar); svg.appendChild(tv);
+    const tl = svgEl('text', { x: x + w / 2, y: H - 10, 'text-anchor': 'middle' }); tl.textContent = r.label; svg.appendChild(tl); });
+  if (opts.ref) { const y = yL(opts.ref); svg.appendChild(svgEl('line', { x1: P.l, x2: W - P.r, y1: y, y2: y, stroke: 'var(--bad)', 'stroke-dasharray': '5 4' })); const t = svgEl('text', { x: W - P.r + 4, y: y + 4 }); t.style.fill = 'var(--bad)'; t.textContent = '$' + opts.ref; svg.appendChild(t); }
+  const pts = rows.map((r, i) => [P.l + i * bw + bw / 2, yL(r.line)]);
+  svg.appendChild(svgEl('polyline', { points: pts.map((p) => p.join(',')).join(' '), fill: 'none', stroke: 'var(--warn)', 'stroke-width': 2 }));
+  pts.forEach((p, i) => { const c = svgEl('circle', { cx: p[0], cy: p[1], r: 5, fill: 'var(--warn)', stroke: '#fff', 'stroke-width': 2 }); hover(c, rows[i].tip); svg.appendChild(c); const t = svgEl('text', { x: p[0], y: p[1] - 10, 'text-anchor': 'middle', class: 'v lv' }); t.textContent = '$' + Math.round(rows[i].line); svg.appendChild(t); });
+  $(target).appendChild(svg);
+}
+comboChart('#ch-trend', D.trend.map(([m, s, ns_, o]) => ({ label: m, bar: o, line: s / o, tip: `${m}: ${o} замовлень, ${money(s)} витрат, ${money(s / o)} за продаж, повернення ${(ns_ / s).toFixed(2)}×` })), { ref: K.breakeven, fmtBar: int, label: 'Замовлення і ціна продажу по місяцях' });
+table('#t-trend', ['Місяць', 'Витрати Meta', 'Чисті продажі', 'Замовлення', 'Ціна продажу', 'Повернення'], D.trend.map(([m, s, n, o]) => [m, money(s), (m === 'Жовтень' ? '≈' : '') + money(n), int(o), money(s / o), (n / s).toFixed(2) + '×']), [1, 2, 3, 4, 5]);
+
+// Тижні
+function barChart(target, rows, opts) {
+  const W = 760, rowH = opts.rowH || 30, H = rows.length * rowH + 24, lw = opts.lw || 170, P = { r: 56 };
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opts.label });
+  const max = Math.max(opts.ref || 0, ...rows.filter((r) => r.v != null).map((r) => r.v)) * 1.08, x = (v) => lw + (v / max) * (W - lw - P.r);
+  rows.forEach((r, i) => { const y = 8 + i * rowH; const t = svgEl('text', { x: lw - 8, y: y + rowH / 2 + 2, 'text-anchor': 'end' }); t.style.fill = 'var(--fg)'; t.textContent = r.label; svg.appendChild(t);
+    if (r.v == null) { const e = svgEl('text', { x: lw + 6, y: y + rowH / 2 + 2 }); e.textContent = 'дані ще не внесені'; svg.appendChild(e); return; }
+    const rect = svgEl('rect', { x: lw, y: y + 5, width: Math.max(2, x(r.v) - lw), height: rowH - 12, fill: r.color || 'var(--bar)', rx: 3 }); hover(rect, r.tip); svg.appendChild(rect);
+    const tv = svgEl('text', { x: x(r.v) + 6, y: y + rowH / 2 + 2, class: 'v' }); tv.textContent = opts.fmt(r.v); svg.appendChild(tv); });
+  if (opts.ref) { const xr = x(opts.ref); svg.appendChild(svgEl('line', { x1: xr, x2: xr, y1: 4, y2: H - 18, stroke: 'var(--bad)', 'stroke-dasharray': '5 4' })); const t = svgEl('text', { x: xr, y: H - 4, 'text-anchor': 'middle' }); t.style.fill = 'var(--bad)'; t.textContent = opts.refLabel || '$' + opts.ref; svg.appendChild(t); }
+  $(target).appendChild(svg);
+}
+barChart('#ch-weeks', D.weeks.map(([l, s, o]) => ({ label: l, v: s / o, color: s / o > K.breakeven ? 'var(--bad)' : 'var(--bar)', tip: `${l}: ${money(s)} витрат, ${o} замовлень, ${money(s / o)} за продаж` })), { ref: K.breakeven, fmt: (v) => money(v), label: 'Ціна продажу по тижнях', lw: 110 });
+table('#t-weeks', ['Період', 'Витрати Meta', 'Замовлення', 'Ціна продажу'], D.weeks.map(([l, s, o]) => [l, money(s), o, money(s / o)]), [1, 2, 3]);
+
+// Довіра до цифр
+table('#t-recon', ['Джерело', 'Замовлення', 'Гроші', 'Що рахує'], D.recon, [1, 2]);
+const lastClick = D.gaCustom['Paid social'][1], metaSales = 68;
+table('#t-cpa3', ['Ціна продажу Meta', 'Як рахуємо', 'Сума'], [
+  ['Змішана (p3)', 'витрати ÷ усі 79 замовлень', money(K.spend / K.orders)],
+  ['За атрибуцією Meta', `витрати ÷ ${metaSales} продажів Meta`, money(K.spend / metaSales)],
+  ['За останнім кліком', `витрати ÷ ${lastClick} покупки з платних соцмереж (GA4)`, money(K.spend / lastClick)] ], [2]);
+const gaRows = [];
+const keys = new Set([...Object.keys(D.gaDefault), ...Object.keys(D.gaCustom)]);
+const pairs = [['Unassigned', 'Unattributed'], ['Paid Social', 'Paid social'], ['Mobile Push Notifications', null], ['Organic Search', 'Organic search'], ['Direct', 'Direct'], ['Organic Social', 'Organic social'], ['Referral', 'Referral']];
+pairs.forEach(([a, b]) => gaRows.push([a, int(D.gaDefault[a][0]), D.gaDefault[a][1], b ? b : '— (у p3 — платні соцмережі)', b ? int(D.gaCustom[b][0]) : '—', b ? D.gaCustom[b][1] : '—']));
+table('#t-ga', ['Стандартна група GA4', 'Сесії', 'Покупки', 'Група каналів p3', 'Сесії', 'Покупки'], gaRows, [1, 2, 4, 5]);
+
+// Кампанії
+const campRows = D.camps.map((c) => { const cpa = c[1] / c[5]; return { c, cpa, cls: cpa <= c[7] * 0.9 ? 'ok' : cpa <= c[7] * 1.1 ? 'warn' : 'bad' }; });
+barChart('#ch-camp', campRows.map((r) => ({ label: r.c[0], v: r.cpa, color: `var(--${r.cls})`, tip: `${r.c[0]}: ${money(r.c[1])} витрат, ${r.c[5]} продажів Meta, ${money(r.cpa)} за продаж; маржа ринку ≈ ${money(r.c[7])}` })), { fmt: (v) => money(v), label: 'Ціна продажу по кампаніях', lw: 210 });
+table('#t-camp', ['Кампанія', 'Витрати', 'Кошики', 'Ціна кошика', 'Кошики / 1,000 показів', 'Продажі Meta', 'Ціна продажу', 'Маржа ринку', 'Висновок'], campRows.map((r) => [r.c[0], money(r.c[1]), r.c[2], money(r.c[3]), r.c[4].toFixed(2), r.c[5], money(r.cpa), '≈ ' + money(r.c[7]), [r.cls, r.c[8]]]), [1, 2, 3, 4, 5, 6, 7]);
+
+// Ринки
+table('#t-mkt', ['Ринок', 'Витрати Meta', 'Продажі Meta', 'Ціна продажу (Meta)', 'Замовлення Shopify', 'Маржа до реклами', 'Рішення'], D.mkts.map((m) => { const cpa = m[1] && m[2] ? m[1] / m[2] : null; const bad = /Збиток/.test(m[5]), good = /плюсі|Найдешевший/.test(m[5]); return [m[0], m[1] ? money(m[1]) : '—', m[2] ?? '—', cpa ? money(cpa) : '—', m[3] ?? '—', m[4] ?? '—', [bad ? 'bad' : good ? 'ok' : 'warn', m[5]]]; }), [1, 2, 3, 4]);
+
+// Креативи
+const totalSpend = K.spend;
+table('#t-cr', ['Креатив', 'Ринок', 'Витрати', 'Частка витрат', 'Продажі Meta', 'Ціна продажу', 'Кошики / 1,000', 'Hook', 'Hold', 'Висновок'], D.cr.map((c) => [c[0], c[1], money(c[2]), (c[2] / totalSpend * 100).toFixed(0) + '%', c[3], c[3] ? money(c[2] / c[3]) : '—', c[4].toFixed(2), c[5], c[6], c[7]]), [2, 3, 4, 5, 6, 7, 8]);
+
+// Плейсменти
+const plRows = D.pl.map(([p, s, n]) => ({ label: p, v: s / n, color: s / n > 300 ? 'var(--bad)' : 'var(--bar)', tip: `${p}: ${money(s)} витрат, ${n} продажів Meta, ${money(s / n)} за продаж` })).sort((a, b) => a.v - b.v);
+barChart('#ch-pl', plRows, { fmt: (v) => money(v), label: 'Ціна продажу за плейсментами', lw: 150 });
+const plSpend = D.pl.reduce((s, r) => s + r[1], 0);
+table('#t-pl', ['Плейсмент', 'Витрати', 'Частка витрат', 'Продажі Meta', 'Ціна продажу'], D.pl.map(([p, s, n]) => [p, money(s), (s / plSpend * 100).toFixed(0) + '%', n, money(s / n)]), [1, 2, 3, 4]);
+
+// Сайт
+const f = D.funnel;
+table('#t-funnel', ['Етап (користувачі GA4)', 'Вересень', 'Жовтень', 'Зміна'], [
+  ...f.map(([s, a, b]) => [s, int(a), int(b), sgn(pct(b, a)) + '%']),
+  ['Кошик → оформлення', (f[1][1] / f[0][1] * 100).toFixed(1) + '%', (f[1][2] / f[0][2] * 100).toFixed(1) + '%', sgn((f[1][2] / f[0][2] - f[1][1] / f[0][1]) * 100, 1) + ' п.п.'],
+  ['Оформлення → покупка', (f[2][1] / f[1][1] * 100).toFixed(1) + '%', (f[2][2] / f[1][2] * 100).toFixed(1) + '%', sgn((f[2][2] / f[1][2] - f[2][1] / f[1][1]) * 100, 1) + ' п.п.'] ], [1, 2, 3]);
+
+// Інші канали
+table('#t-ch', ['Канал', 'Обсяг', 'Результат', 'Висновок'], D.channels);
+
+// Листопад
+const N = D.nov;
+[['Витрати Meta 1–9.11', money(N.spend), '≈ $665 на день', 'mid'], ['Замовлення 1–9.11', int(N.orders), '≈ 2.4 на день; у жовтні в середньому 2.5', 'mid'], ['Ціна продажу 1–9.11', money(N.cpa), '5–8.11: ' + money(N.cpa58) + ' — після перебудови структури', 'down'], ['Білих колонок', int(N.white), 'закінчаться 12–13.11; чорні ≈17.11', 'down']]
+  .forEach(([l, v, d, c]) => { const k = el('div', 'kpi'); k.appendChild(el('span', 'l', l)); k.appendChild(el('span', 'v', v)); k.appendChild(el('span', 'd ' + c, d)); $('#kpis-nov').appendChild(k); });
+table('#t-target', ['Ціль p3', 'Жовтень (факт)', 'Листопад (переглянута)', 'Грудень'], D.target, [1, 2, 3]);
+
+// Листопад по тижнях
+const NW = D.novWeeks, NT = D.novTarget;
+const spendOf = (w) => (w.meta || 0) + (w.google || 0);
+const filled = NW.filter((w) => w.meta != null && w.orders != null);
+const cpaCls = (v) => v == null ? 'mute' : v <= K.breakeven ? 'ok' : v <= NT.cpa ? 'warn' : 'bad';
+const cpaWord = { ok: 'нижче беззбитковості', warn: 'між $209 і ціллю $250', bad: 'вище цілі $250', mute: 'немає даних' };
+const sum = (f) => filled.reduce((s, w) => s + (w[f] || 0), 0);
+const mOrders = sum('orders'), mMeta = sum('meta'), mGoogle = sum('google'), mSales = sum('sales'), mSpend = mMeta + mGoogle, mCpa = mOrders ? mSpend / mOrders : null;
+[['Замовлення CORE', filled.length ? int(mOrders) : '—', `ціль p3 на місяць ${NT.orders[0]}–${NT.orders[1]}`, mOrders >= NT.orders[0] ? 'up' : 'mid'],
+ ['Ціна продажу', mCpa ? money(mCpa) : '—', `ціль ≤ ${money(NT.cpa)} · межа США $222, Канади $199`, mCpa == null ? 'mid' : mCpa <= NT.cpa ? 'up' : 'down'],
+ ['Витрати Meta', filled.length ? money(mMeta) : '—', `план на місяць ${money(NT.meta)}`, 'mid'],
+ ['Витрати Google Ads', filled.length ? money(mGoogle) : '—', `тест на місяць ${money(NT.google)} · старт ≈20.11`, 'mid'],
+ ['Повернення на витрати', mSpend && mSales ? (mSales / mSpend).toFixed(1) + '×' : '—', 'жовтень 3.0×', 'mid']]
+  .forEach(([l, v, d, c]) => { const k = el('div', 'kpi'); k.appendChild(el('span', 'l', l)); k.appendChild(el('span', 'v', v)); k.appendChild(el('span', 'd ' + c, d)); $('#kpis-novm').appendChild(k); });
+$('#nov-filled').textContent = `Внесено тижнів: ${filled.length} з ${NW.length}. Цифри місяця — сума внесених тижнів.` + (filled.length ? '' : ' Поки тижні не внесені, орієнтир — знімок p3 за 1–9.11 нижче.');
+const octW = D.weeks.map(([l, s, o]) => ({ label: l, v: s / o, color: 'var(--bar2)', tip: `${l}: ${money(s)} витрат, ${o} замовлень, ${money(s / o)} за продаж` }));
+const novW = NW.map((w) => { const o = w.orders, sp = spendOf(w), v = w.meta != null && o ? sp / o : null; const c = cpaCls(v); return { label: w.label, v, color: c === 'ok' ? 'var(--bar)' : `var(--${c})`, tip: v == null ? '' : `${w.label}: ${money(sp)} витрат (Meta ${money(w.meta)}, Google ${money(w.google || 0)}), ${o} замовлень, ${money(v)} за продаж` }; });
+barChart('#ch-novw', [...octW, ...novW], { ref: NT.cpa, refLabel: 'ціль $250', fmt: (v) => money(v), label: 'Ціна продажу по тижнях, жовтень і листопад', lw: 110, rowH: 26 });
+const octAvg = ['Жовтень, у середньому за 7 днів', money(K.spend / 31 * 7), '—', (K.orders / 31 * 7).toFixed(1), '≈' + money(K.netSales / 31 * 7), money(K.cpaBlend), K.roas.toFixed(1) + '×', K.c2p.toFixed(1) + '%', ['mute', 'для порівняння']];
+table('#t-novw', ['Тиждень', 'Витрати Meta', 'Google Ads', 'Замовлення', 'Чисті продажі', 'Ціна продажу', 'Повернення', 'Оформлення → покупка', 'Оцінка'],
+  [octAvg, ...NW.map((w) => { const has = w.meta != null && w.orders != null, sp = spendOf(w), v = has && w.orders ? sp / w.orders : null, c = cpaCls(v);
+    return [w.label, w.meta != null ? money(w.meta) : null, w.google != null ? money(w.google) : null, w.orders, w.sales != null ? money(w.sales) : null, v ? money(v) : null, has && w.sales ? (w.sales / sp).toFixed(1) + '×' : null, w.c2p != null ? w.c2p.toFixed(1) + '%' : null, [c, cpaWord[c]]]; })], [1, 2, 3, 4, 5, 6, 7]);
+NW.forEach((w) => { const has = w.meta != null && w.orders != null, sp = spendOf(w), v = has && w.orders ? sp / w.orders : null, c = cpaCls(v);
+  const card = el('div', 'wk'); const hd = el('div', 'hd'); hd.appendChild(el('b', '', w.label)); hd.appendChild(el('span', 'tag ' + c, has ? money(v) + ' за продаж' : 'дані ще не внесені')); card.appendChild(hd);
+  if (has) card.appendChild(el('span', 'nums', `${money(sp)} витрат · ${w.orders} замовлень` + (w.sales ? ` · ${money(w.sales)} продажів` : '')));
+  [['Події', w.events], ['Що змінили', w.changes], ['Висновок', w.result]].forEach(([l, t]) => { const p = el('p'); p.appendChild(el('span', '', l + ': ')); p.appendChild(document.createTextNode(t || '—')); card.appendChild(p); });
+  $('#novcards').appendChild(card); });
+
+// Дії і питання
+table('#t-act', ['Що робимо', 'Чому (цифра)', 'Хто', 'Коли'], D.act);
+table('#t-q', ['Питання', 'Хто відповідає'], D.q);
+</script>
+</body></html>
